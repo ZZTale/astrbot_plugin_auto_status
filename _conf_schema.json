@@ -1,0 +1,70 @@
+{
+  "allowed_qq": {
+        "type": "list",
+        "description": "允许修改状态的QQ号白名单（全局）",
+        "hint": "只有在这个列表里的QQ号，才能命令机器人切换状态，或使用一键切换状态指令。",
+        "default": ["1234567"]
+  },
+  "startup_config": {
+    "type": "object",
+    "description": "🚀 开机自启及一键切换状态设置",
+    "items": {
+      "enable_startup_status": {
+        "type": "bool",
+        "description": "启用开机自动设置在线",
+        "hint": "开启后，AstrBot启动20秒后会自动将机器人切换为‘在线’。关闭则保持原有状态。",
+        "default": true
+      },
+      "status_change_whitelist": {
+        "type": "bool",
+        "description": "使用白名单模式（关闭则为黑名单）",
+        "hint": "开启：只有白名单内的机器人开机自动在线且能被一键切换状态。关闭：除了黑名单内的，其余都能被执行操作。",
+        "default": false
+      },
+      "whitelist": {
+        "type": "list",
+        "description": "白名单列表",
+        "hint": "填入 OneBot 的 ID，例如 napbot。仅在开启白名单模式时生效。",
+        "default": []
+      },
+      "blacklist": {
+        "type": "list",
+        "description": "黑名单列表",
+        "hint": "填入 OneBot 的 ID，例如 napbot。这些机器人将不受插件影响。",
+        "default": []
+      }
+    }
+  },
+  "chat_config": {
+    "type": "object",
+    "description": "💬 AI 聊天状态修改设置",
+    "items": {
+      "max_retry": {
+        "type": "int",
+        "description": "状态词填错时的最大重试次数",
+        "hint": "AI 没选对状态时允许自我纠正的次数。填 0 表示错一次直接拒绝，不重试。",
+        "default": 1
+      },
+      "cooldown_seconds": {
+        "type": "int",
+        "description": "状态修改冷却时间（秒）",
+        "hint": "防止 AI 频繁修改状态。填 0 表示不限制。",
+        "default": 30
+      },
+      "status_mapping": {
+        "type": "list",
+        "description": "自定义状态映射表",
+        "hint": "【标准模式】填3个参数：状态名,基础码,扩展码。例：摸鱼中,10,1300（只有10在线能挂扩展码）。\n【DIY模式】填4个参数：状态名,基础码,自定义文字,图标ID。例：修仙中,10,正在修仙,14（自定义文字建议不超过8个字）。",
+        "default": [
+          "在线,10,0",
+          "离开,30,0",
+          "睡眠,10,1016",
+          "忙碌,50,0",
+          "请勿打扰,70,0",
+          "摸鱼中,10,1300",
+          "修仙中,10,正在修仙,14"
+        ]
+      }
+    }
+  }
+}
