@@ -14,6 +14,7 @@ class AutoStatusPlugin(Star):
         self.current_status = {}  
         self.last_change_time = {}  
         self.retry_tracker = {}  
+        self._processed_platforms = set()
         
         # 1. 读取全局权限白名单
         self.allowed_qq = [str(qq) for qq in self.config.get("allowed_qq", [])]
@@ -70,41 +71,38 @@ class AutoStatusPlugin(Star):
         """生命周期方法：AstrBot 启动时自动执行"""
         logger.info("【自动状态插件】启动中，等待系统稳定...")
     
-    @filter.on_astrbot_loaded()
-    async def on_astrbot_loaded(self):
-        """AstrBot 核心及所有平台加载完成后触发"""
-        logger.info("【自动状态插件】检测到 AstrBot 平台已加载完毕，等待其他机器人连线（20s）...")
-        
-        await asyncio.sleep(20)
-        logger.info("【自动状态插件】等待结束，开始执行统一开机自启逻辑...")
-
+    async def _try_set_status(self, bot_id: str):
+        """为单个机器人独立重试设置状态"""
+        self._processed_platforms.add(bot_id)
+        for attempt in range(5): 
+            success = await self._set_status_by_platform(bot_id, "在线")
+            if success:
+                logger.info(f"【自动状态插件】机器人 {bot_id} 已成功设为在线")
+                return
+            await asyncio.sleep(5)  
+        logger.warning(f"【自动状态插件】机器人 {bot_id} 重试 5 次仍未成功，暂时放弃（等待重连触发）")
+        self._processed_platforms.discard(bot_id)
+    
+    @filter.on_platform_loaded()
+    async def on_platform_loaded(self):
+        """每启动一个平台触发一次，为尚未处理的平台启动独立重试任务"""
         if not self.enable_startup_status:
-            logger.info("【自动状态插件】配置中已关闭开机自动设置，跳过。")
             return
 
-        startup_status = "在线" if "在线" in self.status_map else None
-        if not startup_status:
-            logger.info("【自动状态插件】未在配置中找到 '在线' 状态，跳过开机自动设置。")
-            return
-
-        # 此时去遍历，NapCat 一定已经连上了
         for platform in self.context.platform_manager.platform_insts:
             if platform.meta().name == "aiocqhttp":
                 bot_id = platform.meta().id
-
+                if bot_id in self._processed_platforms:
+                    continue
+                # 黑白名单判断
                 if self.status_change_whitelist:
-                    # 白名单模式：不在列表里的跳过
                     if bot_id not in self.whitelist:
-                        logger.info(f"【自动状态插件】机器人 {bot_id} 不在开机白名单中，跳过。")
                         continue
                 else:
-                    # 黑名单模式：如果在黑名单里，直接跳过
                     if bot_id in self.blacklist:
-                        logger.info(f"【自动状态插件】机器人 {bot_id} 在开机黑名单中，跳过。")
                         continue
-
-                # 执行修改（调用你底层的执行方法）
-                await self._set_status_by_platform(bot_id, startup_status)
+                # 为这个机器人启动独立的重试任务
+                asyncio.create_task(self._try_set_status(bot_id))
 
     async def terminate(self):
         """生命周期方法：AstrBot 关闭时自动执行"""
@@ -145,8 +143,7 @@ class AutoStatusPlugin(Star):
 
                     # 根据解析的 type 决定调哪个接口
                     if info["type"] == "standard":
-
-                    # 核心 API 调用：同时传入 status 和 ext_status
+                        # 核心 API 调用：同时传入 status 和 ext_status
                         await platform.bot.call_action(
                             "set_online_status", 
                             status=info["status"],
@@ -155,6 +152,7 @@ class AutoStatusPlugin(Star):
                         )
                         log_msg = f"状态={info['status']}, ext={info['ext']}"
                     else:
+                        # 自定义状态
                         await platform.bot.call_action(
                             "set_diy_online_status", 
                             status=info["status"],
@@ -169,7 +167,11 @@ class AutoStatusPlugin(Star):
                     logger.info(f"【自动状态插件】✅ 机器人 [{platform_id}] 状态已设置为：{status_name} ({log_msg})")
                     return True
                 except Exception as e:
-                    logger.error(f"【自动状态插件】❌ 机器人 [{platform_id}] 设置状态失败: {e}")
+                    error_msg = str(e)
+                    if "not connected" in error_msg.lower() or "connection" in error_msg.lower() or error_msg == "":
+                        logger.debug(f"【自动状态插件】等待机器人 [{platform_id}] 连接中...")
+                    else:
+                        logger.error(f"【自动状态插件】❌ 机器人 [{platform_id}] 设置状态失败: {e}")
                     return False
         return False
 
