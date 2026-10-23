@@ -5,7 +5,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger
 from astrbot.api.provider import ProviderRequest
 
-@register("astrbot_plugin_auto_status", "ZZTale", "QQ状态自动设置与更改", "1.0.0")
+@register("astrbot_plugin_auto_status", "ZZTale", "QQ状态自动设置与更改", "1.0.1")
 class AutoStatusPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
@@ -79,7 +79,7 @@ class AutoStatusPlugin(Star):
             if success:
                 logger.info(f"【自动状态插件】机器人 {bot_id} 已成功设为在线")
                 return
-            await asyncio.sleep(5)  
+            await asyncio.sleep(10)  
         logger.warning(f"【自动状态插件】机器人 {bot_id} 重试 5 次仍未成功，暂时放弃（等待重连触发）")
         self._processed_platforms.discard(bot_id)
     

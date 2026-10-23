@@ -2,5 +2,5 @@ name: astrbot_plugin_auto_status
 display_name: QQ状态自动设置与更改
 desc: QQ状态管理插件。支持开机自动设置在线状态、AI聊天切换状态、一键修改状态指令。
 help: 发送 /force <状态名> 可一键强制切换状态。
-version: 1.0.0
+version: 1.0.1
 author: ZZTale
